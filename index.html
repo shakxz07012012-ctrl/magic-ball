@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Bola Sihir Divine · Final Version</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: #0b131e; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            overflow: hidden; 
+            color: #fff;
+            transition: background 0.8s ease;
+        }
+
+        /* Canvas Partikel Latar Belakang */
+        #particleCanvas { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 1; pointer-events: none; 
+        }
+        
+        .bg-glow { 
+            position: fixed; width: 100vw; height: 100vh; 
+            background: radial-gradient(circle at 50% 50%, #1a3a5a 0%, #0b131e 100%); 
+            z-index: -1; 
+        }
+
+        /* Efek Guncang Layar */
+        .screen-shake { animation: screenShake 0.1s infinite; }
+        @keyframes screenShake {
+            0% { transform: translate(2px, 2px); }
+            50% { transform: translate(-2px, -2px); }
+            100% { transform: translate(2px, -2px); }
+        }
+
+        .container { 
+            text-align: center; width: 100%; max-width: 450px; 
+            z-index: 10; position: relative; padding: 20px;
+        }
+        
+        /* Animasi Mengambang */
+        .ball-wrapper { animation: float 4s ease-in-out infinite; margin-bottom: 40px; }
+        @keyframes float { 
+            0%, 100% { transform: translateY(0px); } 
+            50% { transform: translateY(-20px); } 
+        }
+
+        /* Bola Utama */
+        .magic-ball {
+            width: 270px; height: 270px; border-radius: 50%; margin: 0 auto; position: relative;
+            background: radial-gradient(circle at 30% 30%, #81d4fa, #0277bd, #000);
+            box-shadow: 0 0 60px rgba(0, 188, 212, 0.3), inset 0 -15px 40px rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Aura Berdenyut */
+        .magic-ball::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; border: 2px solid rgba(129, 212, 250, 0.5);
+            opacity: 0; animation: pulse 3s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        .inner-core {
+            width: 145px; height: 145px; background: #000a10; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 0 30px #00bcd4; border: 2px solid rgba(129, 212, 250, 0.2);
+            transition: all 0.8s ease;
+        }
+
+        #answerText {
+            font-size: 19px; font-weight: bold; color: #fff; text-align: center;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8); opacity: 0; 
+            transform: scale(0.6); transition: all 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            font-family: 'Courier New', Courier, monospace;
+            padding: 10px;
+        }
+
+        #answerText.show { opacity: 1; transform: scale(1); }
+
+        /* UI Kontrol */
+        input {
+            width: 90%; padding: 16px; border-radius: 30px; border: 1px solid #4fc3f7;
+            background: rgba(255,255,255,0.05); color: white; text-align: center; 
+            outline: none; backdrop-filter: blur(8px); margin-bottom: 20px;
+            font-size: 16px; transition: 0.3s;
+        }
+        input:focus { border-color: #00bcd4; background: rgba(255,255,255,0.1); }
+
+        button {
+            padding: 15px 45px; border-radius: 30px; border: none;
+            background: linear-gradient(45deg, #4fc3f7, #0288d1);
+            color: white; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
+        }
+        button:active { transform: scale(0.92); }
+
+        /* Animasi Kocok Bola */
+        .shaking { animation: jitter 0.1s infinite; }
+        @keyframes jitter { 
+            0% { transform: scale(1.05) translate(2px, 2px); } 
+            50% { transform: scale(1.05) translate(-2px, -2px); } 
+        }
+        
+        .audio-control { 
+            position: fixed; top: 20px; right: 20px; background: rgba(255,255,255,0.1); 
+            width: 45px; height: 45px; display: flex; align-items: center; 
+            justify-content: center; border-radius: 50%; cursor: pointer; 
+            z-index: 100; border: 1px solid rgba(129, 212, 250, 0.3); 
+        }
+    </style>
+</head>
+<body id="mainBody">
+
+<audio id="bgMusic" loop>
+    <source src="musik.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfxClick" src="klik.mp3"></audio>
+<audio id="sfxMagic" src="magic.mp3"></audio>
+
+<div class="audio-control" id="muteBtn">🔊</div>
+<canvas id="particleCanvas"></canvas>
+<div class="bg-glow"></div>
+
+<div class="container">
+    <div class="ball-wrapper" id="wrapper">
+        <div class="magic-ball" id="magicBall">
+            <div class="inner-core" id="innerCore">
+                <div id="answerText">?</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ui-area">
+        <input type="text" id="questionInput" placeholder="Tanyakan takdirmu di sini...">
+        <br>
+        <button id="askBtn">Tanya Bola ✨</button>
+    </div>
+</div>
+
+<script>
+    const music = document.getElementById('bgMusic');
+    const sfxClick = document.getElementById('sfxClick');
+    const sfxMagic = document.getElementById('sfxMagic');
+    const muteBtn = document.getElementById('muteBtn');
+    const body = document.getElementById('mainBody');
+    const ball = document.getElementById('magicBall');
+    const core = document.getElementById('innerCore');
+    const ansDisplay = document.getElementById('answerText');
+    const input = document.getElementById('questionInput');
+    
+    let isPlaying = false;
+
+    // Set Volume Default
+    music.volume = 0.4;
+    sfxClick.volume = 1.0;
+    sfxMagic.volume = 0.8;
+
+    function playSfx(audio) { 
+        audio.currentTime = 0; 
+        audio.play().catch(() => console.log("Audio play blocked")); 
+    }
+
+    function toggleMusic() {
+        if (!isPlaying) {
+            music.play().then(() => {
+                isPlaying = true;
+                muteBtn.innerText = "🔊";
+            }).catch(() => {});
+        } else {
+            music.pause();
+            isPlaying = false;
+            muteBtn.innerText = "🔇";
+        }
+    }
+    muteBtn.addEventListener('click', toggleMusic);
+
+    // Database Jawaban & Tipe Warna
+    const responses = [
+        { text: "YAA", type: "good" },
+        { text: "SANGAT PASTI", type: "good" },
+        { text: "TENTU SAJA", type: "good" },
+        { text: "TIDAK", type: "bad" },
+        { text: "JANGAN", type: "bad" },
+        { text: "BUTUT", type: "bad" },
+        { text: "MUNGKIN", type: "neutral" },
+        { text: "BISA JADI", type: "neutral" },
+        { text: "RAHASIA", type: "neutral" }
+    ];
+
+    let memory = JSON.parse(localStorage.getItem('final_divine_mem')) || {};
+
+    function ask() {
+        if (!isPlaying) toggleMusic();
+        
+        let q = input.value.trim().toLowerCase();
+        if(!q) return;
+
+        playSfx(sfxClick);
+        
+        // Mulai Efek Drama
+        body.classList.add('screen-shake');
+        ball.classList.add('shaking');
+        ansDisplay.classList.remove('show');
+
+        // Reset Warna Bola ke Biru (Default) saat kocok
+        ball.style.background = "radial-gradient(circle at 30% 30%, #81d4fa, #0277bd, #000)";
+        core.style.boxShadow = "inset 0 0 30px #00bcd4";
+
+        setTimeout(() => {
+            let res = memory[q] || responses[Math.floor(Math.random() * responses.length)];
+            memory[q] = res;
+            localStorage.setItem('final_divine_mem', JSON.stringify(memory));
+
+            // Logika Ganti Warna Berdasarkan Jawaban
+            if(res.type === "good") {
+                ball.style.background = "radial-gradient(circle at 30% 30%, #a8ff78, #208000, #000)";
+                core.style.boxShadow = "inset 0 0 35px #44ff00";
+            } else if(res.type === "bad") {
+                ball.style.background = "radial-gradient(circle at 30% 30%, #ff5f6d, #b91d1d, #000)";
+                core.style.boxShadow = "inset 0 0 35px #ff0000";
+            } else {
+                ball.style.background = "radial-gradient(circle at 30% 30%, #bdc3c7, #2c3e50, #000)";
+                core.style.boxShadow = "inset 0 0 35px #ffffff";
+            }
+
+            ansDisplay.innerText = res.text;
+            ansDisplay.classList.add('show');
+            
+            // Hentikan Guncangan
+            body.classList.remove('screen-shake');
+            ball.classList.remove('shaking');
+            
+            playSfx(sfxMagic);
+        }, 1300);
+    }
+
+    document.getElementById('askBtn').addEventListener('click', ask);
+    ball.addEventListener('click', ask);
+    input.addEventListener('keypress', (e) => { if(e.key === 'Enter') ask(); });
+
+    // --- SISTEM PARTIKEL HALUS ---
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    function resize() { 
+        canvas.width = window.innerWidth; 
+        canvas.height = window.innerHeight; 
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+        constructor() { this.reset(); }
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 1.8 + 0.3;
+            this.speedX = Math.random() * 0.4 - 0.2;
+            this.speedY = Math.random() * 0.4 - 0.2;
+            this.opacity = Math.random();
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            if (this.x > canvas.width || this.x < 0 || this.y > canvas.height || this.y < 0) this.reset();
+        }
+        draw() {
+            ctx.fillStyle = `rgba(129, 212, 250, ${this.opacity})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < 70; i++) particles.push(new Particle());
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
+</body>
+</html>
